@@ -4,6 +4,7 @@ using Bibliotec.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bibliotec.Migrations
 {
     [DbContext(typeof(BibliotecContext))]
-    partial class BibliotecContextModelSnapshot : ModelSnapshot
+    [Migration("20260514131405_Adicionando Atributos")]
+    partial class AdicionandoAtributos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -191,7 +194,7 @@ namespace Bibliotec.Migrations
             modelBuilder.Entity("Bibliotec.Models.Livro", b =>
                 {
                     b.HasOne("Bibliotec.Models.Autor", "Autor")
-                        .WithMany("Livros")
+                        .WithMany("Livro")
                         .HasForeignKey("AutorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -201,7 +204,7 @@ namespace Bibliotec.Migrations
 
             modelBuilder.Entity("Bibliotec.Models.Autor", b =>
                 {
-                    b.Navigation("Livros");
+                    b.Navigation("Livro");
                 });
 #pragma warning restore 612, 618
         }
