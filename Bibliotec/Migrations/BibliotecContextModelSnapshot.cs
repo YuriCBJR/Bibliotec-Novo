@@ -34,7 +34,7 @@ namespace Bibliotec.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Autor");
+                    b.ToTable("Autores");
                 });
 
             modelBuilder.Entity("Bibliotec.Models.Colaborador", b =>
@@ -47,12 +47,6 @@ namespace Bibliotec.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<Guid>("EmprestimoId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid>("LivroId")
-                        .HasColumnType("char(36)");
-
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -61,11 +55,12 @@ namespace Bibliotec.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("char(36)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("EmprestimoId");
-
-                    b.HasIndex("LivroId");
+                    b.HasIndex("UsuarioId");
 
                     b.ToTable("Colaborador");
                 });
@@ -88,7 +83,7 @@ namespace Bibliotec.Migrations
                     b.Property<Guid>("LivroId")
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid?>("UsuarioId")
                         .HasColumnType("char(36)");
 
                     b.HasKey("Id");
@@ -112,6 +107,10 @@ namespace Bibliotec.Migrations
                     b.Property<bool>("Disponivel")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<string>("Genero")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -120,7 +119,7 @@ namespace Bibliotec.Migrations
 
                     b.HasIndex("AutorId");
 
-                    b.ToTable("Livro");
+                    b.ToTable("Livros");
                 });
 
             modelBuilder.Entity("Bibliotec.Models.Usuario", b =>
@@ -152,21 +151,13 @@ namespace Bibliotec.Migrations
 
             modelBuilder.Entity("Bibliotec.Models.Colaborador", b =>
                 {
-                    b.HasOne("Bibliotec.Models.Emprestimo", "Emprestimo")
+                    b.HasOne("Bibliotec.Models.Usuario", "Usuario")
                         .WithMany()
-                        .HasForeignKey("EmprestimoId")
+                        .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Bibliotec.Models.Livro", "Livro")
-                        .WithMany()
-                        .HasForeignKey("LivroId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Emprestimo");
-
-                    b.Navigation("Livro");
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Bibliotec.Models.Emprestimo", b =>
@@ -179,9 +170,7 @@ namespace Bibliotec.Migrations
 
                     b.HasOne("Bibliotec.Models.Usuario", "Usuario")
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UsuarioId");
 
                     b.Navigation("Livro");
 

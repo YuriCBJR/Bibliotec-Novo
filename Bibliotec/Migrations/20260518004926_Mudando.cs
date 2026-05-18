@@ -5,7 +5,7 @@
 namespace Bibliotec.Migrations
 {
     /// <inheritdoc />
-    public partial class aaa : Migration
+    public partial class Mudando : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

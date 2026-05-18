@@ -1,5 +1,8 @@
-﻿using Bibliotec.Data;
+﻿using AutoMapper;
+using Bibliotec.Data;
+using Bibliotec.DTOs;
 using Bibliotec.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,9 +14,11 @@ namespace Bibliotec.Controllers;
 public class LivroController : Controller
 {
     private readonly BibliotecContext _context;
-    public LivroController(BibliotecContext context)
+    private readonly IMapper _mapper;
+    public LivroController(BibliotecContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
 
     [HttpGet]
@@ -21,52 +26,99 @@ public class LivroController : Controller
     {
         try
         {
-            var livros = await _context.Livro.ToListAsync();
-            return Ok(livros);
+            var livro = await _context.Livros.Include(l=> l.Autor).ToListAsync();
+            var livrosDto = _mapper.Map<List<ReadLivroDto>>(livro);
+            return Ok(livrosDto);
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             return BadRequest(ex.Message);
         }
-        }
+    }
 
     [HttpPost("/api/adicionarLivro")]
-    public async Task<IActionResult> AdicionarLivro(Livro livro)
+    public async Task<IActionResult> AdicionarLivro([FromBody] CreateLivroDto livroDto)
     {
-        _context.Add(livro);
-        _context.SaveChanges();
-        return Ok();
-
-    }
-
-    [HttpDelete("{Id}")]
-    public async Task<IActionResult> DeletarLivro([FromRoute] Guid Id)
-    {
-        var livro = await _context.Livro.FindAsync(Id);
-        if (livro == null)
+        try
         {
-            return NotFound();
-        }
-        _context.Livro.Remove(livro);
-        await _context.SaveChangesAsync();
-        return Ok();
+            var livro = _mapper.Map<Livro>(livroDto);
 
+            _context.Livros.Add(livro);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensagem = "Livro adicionado com sucesso!" });
+        }
+        catch (Exception ex)
+        {
+
+            return BadRequest(new { erro = ex.Message, detalhe = ex.InnerException?.Message });
+        }
     }
 
-    [HttpGet("{Id}")]
-    public async Task<IActionResult> GetLivroById([FromRoute] Guid Id)
+    [HttpGet("pesquisa")]
+    public async Task<IActionResult> GetLivroPesquisa([FromQuery] string valor)
     {
-        var livro = _context.Livro.Find(Id);
-        return Ok(livro);
+        try
+        {
+            var query = _context.Livros.Include(o => o.Autor)
+                        .Where(o => o.Nome.Contains(valor) || o.Autor.Nome.Contains(valor));
+            var lista = await query.ToListAsync();
+            return Ok("Alterações feitas!");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpGet("disponiveis")]
-    public IActionResult GetLivroDisponivel([FromQuery] bool disponivel)
+    public IActionResult GetLivroDisponivel([FromQuery] bool disponivel = true)
     {
-        var livro = _context.Livro.Where(l => l.Disponivel == disponivel);
+        var livro = _context.Livros.Where(l => l.Disponivel == disponivel);
         return Ok(livro);
 
     }
+
+    [Authorize]
+    [HttpPut("alterar")]
+    public async Task<IActionResult> PutLivro([FromBody] Livro livro)
+    {
+        try
+        {
+            _context.Livros.Update(livro);
+            await _context.SaveChangesAsync();
+            return Ok("Sucesso, alterado!");
+        }
+        catch
+        {
+            return BadRequest();
+        }
+    }
+    [HttpDelete("{Id}")]
+    public async Task<IActionResult> DeleteLivro([FromRoute] Guid Id)
+    {
+        try
+        {
+            Livro livro = await _context.Livros.FindAsync(Id);
+            if(livro != null)
+            {
+                _context.Livros.Remove(livro);
+                _context.SaveChangesAsync();
+                return Ok();
+
+            }
+            else
+            {
+                return NotFound("Erro, o livro não existe ou já foi excluído");
+            }
+        }
+        catch
+        {
+            return BadRequest();
+        }
+    }
+        
 }
 
 

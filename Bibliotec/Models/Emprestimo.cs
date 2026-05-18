@@ -12,7 +12,7 @@ public class Emprestimo
     //Relacionamento Entity
     public Guid LivroId { get; set; }
     public Livro Livro { get; set; }
-    public Usuario Usuario { get; set; }
-    public Guid UsuarioId { get; set; }
+    public Usuario? Usuario { get; set; }
+    public Guid? UsuarioId { get; set; }
 
 }

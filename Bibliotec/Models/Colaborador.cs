@@ -11,8 +11,7 @@ public class Colaborador
     [EmailAddress]
     public string EmailInstitucional { get; set; }
     //Relacionamento pro entity
-    public Guid LivroId { get; set; }
-    public Emprestimo Emprestimo { get; set; }
-    public Livro Livro { get; set; }
+    public Guid UsuarioId { get; set; }
+    public Usuario Usuario { get; set; }
 
 }

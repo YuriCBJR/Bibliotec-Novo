@@ -11,6 +11,12 @@ public class BibliotecContext : DbContext
     }
     public DbSet<Colaborador> Colaborador { get; set;  }
     public DbSet<Emprestimo> Emprestimo { get; set; }
-    public DbSet<Livro> Livro { get; set; }
+    public DbSet<Livro> Livros { get; set; }
     public DbSet<Usuario> Usuario { get; set; }
+    public DbSet<Autor> Autores {get; set; }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        
+    }
 }
