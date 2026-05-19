@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Bibliotec.Migrations
 {
     /// <inheritdoc />
-    public partial class Dale : Migration
+    public partial class Fiotec : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -106,7 +106,7 @@ namespace Bibliotec.Migrations
                     DataDevolucao = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     Ativo = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     LivroId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
-                    UsuarioId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci")
+                    UsuarioId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci")
                 },
                 constraints: table =>
                 {
@@ -121,8 +121,7 @@ namespace Bibliotec.Migrations
                         name: "FK_Emprestimo_Usuario_UsuarioId",
                         column: x => x.UsuarioId,
                         principalTable: "Usuario",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 

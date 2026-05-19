@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bibliotec.Migrations
 {
     [DbContext(typeof(BibliotecContext))]
-    [Migration("20260518004926_Mudando")]
-    partial class Mudando
+    [Migration("20260519113028_Fiotec")]
+    partial class Fiotec
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -86,7 +86,7 @@ namespace Bibliotec.Migrations
                     b.Property<Guid>("LivroId")
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid?>("UsuarioId")
                         .HasColumnType("char(36)");
 
                     b.HasKey("Id");
@@ -173,9 +173,7 @@ namespace Bibliotec.Migrations
 
                     b.HasOne("Bibliotec.Models.Usuario", "Usuario")
                         .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UsuarioId");
 
                     b.Navigation("Livro");
 

@@ -60,4 +60,19 @@ public class AutorController : Controller
             return BadRequest(ex.Message);
         }
     }
+    [HttpGet("{autorId}/livros")]
+    public async Task<IActionResult> GetLivrosAutor(Guid autorId)
+    {
+        try
+        {
+            var listaAutor = await _context.Autores.Include(l=> l.Livros).FirstOrDefaultAsync(l => l.Id == autorId);
+            var livrosDto = _mapper.Map<List<ReadLivroDto>>(listaAutor.Livros);
+            return Ok(livrosDto);
+        }
+        catch
+        {
+            return BadRequest();
+        }
+    }
+
 }

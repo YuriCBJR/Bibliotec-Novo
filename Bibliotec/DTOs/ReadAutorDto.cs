@@ -1,4 +1,6 @@
-﻿namespace Bibliotec.DTOs;
+﻿using Bibliotec.Models;
+
+namespace Bibliotec.DTOs;
 
 public class ReadAutorDto
 {
