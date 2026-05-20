@@ -40,6 +40,7 @@ public class EmprestimoController : Controller
         return Ok(emprestimosDto);
     }
 
+    [Authorize(Roles = "Colaborador")]
     [HttpPost]
     public async Task<IActionResult> RealizarEmprestimo([FromBody] EmprestimoRequest emprestimoRequest)
     {

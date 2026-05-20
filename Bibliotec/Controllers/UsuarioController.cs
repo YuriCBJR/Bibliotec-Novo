@@ -55,6 +55,7 @@ namespace Bibliotec.Controllers
                 return BadRequest(new { erro = ex.Message, detalhe = ex.InnerException?.Message });
             }
         }
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{Id}")]
         public async Task<IActionResult> DeleteUsuario([FromRoute] Guid Id)
         {

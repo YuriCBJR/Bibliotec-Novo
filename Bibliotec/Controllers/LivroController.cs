@@ -38,6 +38,7 @@ public class LivroController : Controller
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("/api/adicionarLivro")]
     public async Task<IActionResult> AdicionarLivro([FromBody] CreateLivroDto livroDto)
     {
@@ -83,7 +84,7 @@ public class LivroController : Controller
 
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpPut("alterar")]
     public async Task<IActionResult> PutLivro([FromBody] Livro livro)
     {
@@ -98,6 +99,7 @@ public class LivroController : Controller
             return BadRequest();
         }
     }
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{Id}")]
     public async Task<IActionResult> DeleteLivro([FromRoute] Guid Id)
     {
