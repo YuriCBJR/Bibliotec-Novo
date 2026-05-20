@@ -104,7 +104,7 @@ public class LivroController : Controller
             if(livro != null)
             {
                 _context.Livros.Remove(livro);
-                _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
                 return Ok();
 
             }

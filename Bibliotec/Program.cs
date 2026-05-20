@@ -1,7 +1,10 @@
+using AutoMapper;
 using Bibliotec.Data;
 using Bibliotec.Profiles;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using AutoMapper;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +19,29 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+var chave = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("Chave").Get<string>());
+
+builder.Services.AddAuthentication(
+    x =>
+    {
+        x.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    }
+).AddJwtBearer(
+    x =>
+    {
+        x.RequireHttpsMetadata = false;
+        x.SaveToken = true;
+        x.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(chave),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    }
+);
 
 var app = builder.Build();
 
