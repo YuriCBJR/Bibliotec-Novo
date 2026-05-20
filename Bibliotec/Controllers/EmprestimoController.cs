@@ -2,6 +2,7 @@
 using Bibliotec.Data;
 using Bibliotec.DTOs;
 using Bibliotec.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,7 @@ public class EmprestimoRequest
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class EmprestimoController : Controller
 {
     private readonly BibliotecContext _context;
@@ -62,8 +64,8 @@ public class EmprestimoController : Controller
 
             // Regra de negócio: deixa o livro indisponível e coloca a data do emprestimo
             livro.Disponivel = false;
-            emprestimo.DataEmprestimo = DateTime.Now;
-            emprestimo.DataDevolucao = DateTime.Now.AddDays(30);
+            emprestimo.DataEmprestimo = DateTime.UtcNow;
+            emprestimo.DataDevolucao = DateTime.UtcNow.AddDays(30);
 
             _context.Emprestimo.Add(emprestimo);
             await _context.SaveChangesAsync(); // <-- Linha 47 protegida!
@@ -72,6 +74,34 @@ public class EmprestimoController : Controller
         }
 
         catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    [HttpGet("usuario/")]
+    public async Task<IActionResult> EmprestimosUsuario([FromQuery] Guid usuarioId)
+    {
+        try
+        {
+            var usuarioExiste = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
+            if (usuarioExiste == null)
+            {
+                return NotFound("Usuário não encontrado");
+            }
+            var listaEmprestimo = await _context.Emprestimo.Include(e => e.Livro)
+                .Where(e => e.UsuarioId == usuarioId).
+                ToListAsync();
+            if (!listaEmprestimo.Any())
+            {
+                return BadRequest(new { mensagem = "Este usuário não possui nenhum empréstimo" });
+            }
+            else
+            {
+                var listaEmprestimoDto = _mapper.Map<List<ReadEmprestimoDto>>(listaEmprestimo);
+                return Ok(listaEmprestimoDto);
+            }
+        }
+        catch(Exception ex)
         {
             return BadRequest(ex.Message);
         }

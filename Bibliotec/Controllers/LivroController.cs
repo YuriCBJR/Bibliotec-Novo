@@ -11,6 +11,7 @@ namespace Bibliotec.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class LivroController : Controller
 {
     private readonly BibliotecContext _context;
@@ -22,6 +23,7 @@ public class LivroController : Controller
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetLivros()
     {
         try
@@ -71,8 +73,9 @@ public class LivroController : Controller
             return BadRequest(ex.Message);
         }
     }
-
+    
     [HttpGet("disponiveis")]
+    [AllowAnonymous]
     public IActionResult GetLivroDisponivel([FromQuery] bool disponivel = true)
     {
         var livro = _context.Livros.Where(l => l.Disponivel == disponivel);

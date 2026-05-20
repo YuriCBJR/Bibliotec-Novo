@@ -4,6 +4,7 @@ using Bibliotec.Profiles;
 using Bibliotec.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -44,8 +45,8 @@ builder.Services.AddAuthentication(
             ValidateIssuer = false,
             ValidateAudience = false
         };
-    }
-);
+    }).AddMicrosoftIdentityWebApi(builder.Configuration, "AzureAd", "AzureAdScheme");
+
 
 builder.Services.AddSingleton<TokenService>();
 
