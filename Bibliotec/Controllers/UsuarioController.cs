@@ -24,7 +24,7 @@ namespace Bibliotec.Controllers
         {
             try
             {
-                var usuario = await _context.Usuario.ToListAsync();
+                var usuario = await _context.Usuarios.ToListAsync();
                 var usuarioDto = _mapper.Map<List<ReadUsuarioDto>>(usuario);
                 return Ok(usuarioDto);
             }
@@ -39,8 +39,8 @@ namespace Bibliotec.Controllers
             try
             {
                 var usuario = _mapper.Map<Usuario>(usuarioDto);
-                _context.Usuario.Add(usuario);
-               await _context.SaveChangesAsync();
+                _context.Usuarios.Add(usuario);
+                await _context.SaveChangesAsync();
                 return Ok();
             }
             catch (Exception ex)
@@ -54,7 +54,7 @@ namespace Bibliotec.Controllers
         {
             try
             {
-                Usuario usuario = await _context.Usuario.FindAsync(Id);
+                Usuario usuario = await _context.Usuarios.FindAsync(Id);
                 if (usuario != null)
                 {
                     _context.Remove(usuario);

@@ -7,9 +7,6 @@ public class CreateUsuarioDto
     [Required(ErrorMessage = "O nome é obrigatório.")]
     [StringLength(100, ErrorMessage = "O nome não pode passar de 100 caracteres.")]
     public string Nome { get; set; }
-    [Required(ErrorMessage = "O nome é obrigatório.")]
-    [StringLength(100, ErrorMessage = "O nome não pode passar de 100 caracteres.")]
-    public string Login { get; set; }
 
     [Required(ErrorMessage = "O e-mail é obrigatório.")]
     [EmailAddress(ErrorMessage = "Insira um e-mail válido.")]

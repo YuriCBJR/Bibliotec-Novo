@@ -1,6 +1,7 @@
 using AutoMapper;
 using Bibliotec.Data;
 using Bibliotec.Profiles;
+using Bibliotec.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -20,7 +21,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
-var chave = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("Chave").Get<string>());
+var chaveString = builder.Configuration.GetValue<string>("JwtSettings:Chave")
+                  ?? "hufwehfiuhweuifh9wuhcj8ue8r8uy9dijciojsoij98y7qyr7dj9afndfnfhnuiwhçskc2";
+
+var chave = Encoding.ASCII.GetBytes(chaveString);
 
 builder.Services.AddAuthentication(
     x =>
@@ -43,6 +47,8 @@ builder.Services.AddAuthentication(
     }
 );
 
+builder.Services.AddSingleton<TokenService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -53,6 +59,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 

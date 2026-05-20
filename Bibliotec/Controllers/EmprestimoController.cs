@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Bibliotec.Data;
+using Bibliotec.DTOs;
 using Bibliotec.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ public class EmprestimoRequest
 {
     public Guid LivroId { get; set; }
     public DateTime DataEmprestimo {  get; set; }
+    public Guid UsuarioId { get; set; }
 }
 
 [ApiController]
@@ -28,8 +30,12 @@ public class EmprestimoController : Controller
     [HttpGet]
     public async Task<IActionResult> GetEmprestimo()
     {
-        var emprestimo = await _context.Emprestimo.ToListAsync();
-        return Ok(emprestimo);
+        var emprestimo = await _context.Emprestimo.
+            Include(e => e.Usuario).
+            Include(e => e.Livro).
+            ToListAsync();
+        var emprestimosDto = _mapper.Map<List<ReadEmprestimoDto>>(emprestimo);
+        return Ok(emprestimosDto);
     }
 
     [HttpPost]
@@ -37,6 +43,11 @@ public class EmprestimoController : Controller
     {
         try
         {
+            var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.Id == emprestimoRequest.UsuarioId);
+            if (!usuarioExiste)
+            {
+                return BadRequest();
+            }
             var livro = await _context.Livros.FirstOrDefaultAsync(l => l.Id == emprestimoRequest.LivroId);
             if (livro == null)
             {
@@ -52,6 +63,7 @@ public class EmprestimoController : Controller
             // Regra de negócio: deixa o livro indisponível e coloca a data do emprestimo
             livro.Disponivel = false;
             emprestimo.DataEmprestimo = DateTime.Now;
+            emprestimo.DataDevolucao = DateTime.Now.AddDays(30);
 
             _context.Emprestimo.Add(emprestimo);
             await _context.SaveChangesAsync(); // <-- Linha 47 protegida!

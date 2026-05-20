@@ -17,14 +17,19 @@ public class TokenService
     public string GerarToken(Usuario usuario)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
-        var chave = Encoding.ASCII.GetBytes(_configuration.GetSection("Chave").Get<string>());
+        var chaveString = _configuration.GetValue<string>("JwtSettings:Chave")
+                          ?? "hufwehfiuhweuifh9wuhcj8ue8r8uy9dijciojsoij98y7qyr7dj9afndfnfhnuiwhçskc2";
+        var chave = Encoding.ASCII.GetBytes(chaveString);
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(
                 new Claim[]
                 {
-                    new Claim(ClaimTypes.Name, usuario.Login.ToString()),
+                    new Claim(ClaimTypes.Email, usuario.Email),
                     new Claim(ClaimTypes.Role, usuario.Permissao.ToString()),
+                    new Claim(ClaimTypes.Name, usuario.Nome),
+                    new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                 }
             ),
             Expires = DateTime.UtcNow.AddHours(2),

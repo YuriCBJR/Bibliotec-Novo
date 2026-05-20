@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bibliotec.Migrations
 {
     [DbContext(typeof(BibliotecContext))]
-    [Migration("20260519113028_Fiotec")]
-    partial class Fiotec
+    [Migration("20260520064044_Usuarios")]
+    partial class Usuarios
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,34 +38,6 @@ namespace Bibliotec.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Autores");
-                });
-
-            modelBuilder.Entity("Bibliotec.Models.Colaborador", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("EmailInstitucional")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Setor")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("Colaborador");
                 });
 
             modelBuilder.Entity("Bibliotec.Models.Emprestimo", b =>
@@ -131,7 +103,7 @@ namespace Bibliotec.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("Login")
+                    b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -149,18 +121,7 @@ namespace Bibliotec.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Usuario");
-                });
-
-            modelBuilder.Entity("Bibliotec.Models.Colaborador", b =>
-                {
-                    b.HasOne("Bibliotec.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
+                    b.ToTable("Usuarios");
                 });
 
             modelBuilder.Entity("Bibliotec.Models.Emprestimo", b =>

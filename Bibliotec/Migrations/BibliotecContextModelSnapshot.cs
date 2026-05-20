@@ -37,34 +37,6 @@ namespace Bibliotec.Migrations
                     b.ToTable("Autores");
                 });
 
-            modelBuilder.Entity("Bibliotec.Models.Colaborador", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("EmailInstitucional")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Setor")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("Colaborador");
-                });
-
             modelBuilder.Entity("Bibliotec.Models.Emprestimo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -128,7 +100,7 @@ namespace Bibliotec.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("Login")
+                    b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -146,18 +118,7 @@ namespace Bibliotec.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Usuario");
-                });
-
-            modelBuilder.Entity("Bibliotec.Models.Colaborador", b =>
-                {
-                    b.HasOne("Bibliotec.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
+                    b.ToTable("Usuarios");
                 });
 
             modelBuilder.Entity("Bibliotec.Models.Emprestimo", b =>
