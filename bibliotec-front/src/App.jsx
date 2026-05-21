@@ -12,60 +12,49 @@ function App() {
     // ESTADOS DO SISTEMA
     const [livros, setLivros] = useState([]);
     const [autores, setAutores] = useState([]);
+    const [emprestimos, setEmprestimos] = useState([]); // 🟢 NOVO: Guarda os empréstimos do usuário
     const [carregando, setCarregando] = useState(false);
     const [perfilUsuario, setPerfilUsuario] = useState('');
-    const [abaAtiva, setAbaAtiva] = useState('catalogo');
+    const [abaAtiva, setAbaAtiva] = useState('catalogo'); // 'catalogo', 'meus-emprestimos', 'admin'
 
-    // 🔑 ESTADOS DO LOGIN TRADICIONAL (FORMULÁRIO)
+    // ESTADOS DO LOGIN TRADICIONAL
     const [emailForm, setEmailForm] = useState('');
     const [senhaForm, setSenhaForm] = useState('');
     const [carregandoLoginComum, setCarregandoLoginComum] = useState(false);
 
-    // ESTADOS DOS FILTROS E CADASTRO
+    // ESTADOS DOS FILTROS
     const [busca, setBusca] = useState('');
     const [apenasDisponiveis, setApenasDisponiveis] = useState(false);
     const [autorSelecionado, setAutorSelecionado] = useState('');
-    const [novoLivro, setNovoLivro] = useState({ nome: '', genero:'', disponivel: true, autorId: '' });
 
-    // 1️⃣ FLUXO: LOGIN TRADICIONAL (Formulário)
+    // ESTADO DE CADASTRO DE LIVRO
+    const [novoLivro, setNovoLivro] = useState({ nome: '', autorId: '', disponivel: true, genero: '' });
+
+    // 1️⃣ FLUXO: LOGIN TRADICIONAL
     const handleLoginTradicional = async (e) => {
         e.preventDefault();
         if (!emailForm || !senhaForm) {
             alert("Por favor, preencha o e-mail e a senha.");
             return;
         }
-
         setCarregandoLoginComum(true);
         try {
-            // Bate no endpoint comum de login da sua API C#
-            const response = await axios.post(`${API_URL}/autenticacao/login`, {
-                email: emailForm,
-                password: senhaForm
-            });
-
+            const response = await axios.post(`${API_URL}/autenticacao/login`, { email: emailForm, password: senhaForm });
             const { token, usuario } = response.data;
 
-            // Salva as credenciais locais geradas pelo seu JWT
             localStorage.setItem("token_biblioteca", token);
             localStorage.setItem("perfil_biblioteca", usuario.permissao);
-            localStorage.setItem("nome_usuario_comum", usuario.nome); // Guarda o nome para exibir no header
-
+            localStorage.setItem("nome_usuario_comum", usuario.nome);
             setPerfilUsuario(usuario.permissao);
 
-            // Carrega os dados do sistema
-            carregarLivros();
-            carregarAutores();
-
-            alert(`Bem-vindo, ${usuario.nome}! Logado como ${usuario.permissao}.`);
+            carregarDadosIniciais();
+            alert(`Bem-vindo, ${usuario.nome}!`);
         } catch (error) {
-            console.error("Erro no login tradicional:", error);
             alert(error.response?.data?.mensagem || "E-mail ou senha incorretos.");
-        } finally {
-            setCarregandoLoginComum(false);
-        }
+        } finally { setCarregandoLoginComum(false); }
     };
 
-    // 2️⃣ FLUXO: LOGIN MICROSOFT (Redirect)
+    // 2️⃣ FLUXO: LOGIN MICROSOFT
     const handleLoginMicrosoft = async () => {
         if (inProgress !== InteractionStatus.None) return;
         try { await instance.loginRedirect(loginRequest); } catch (e) { console.error(e); }
@@ -87,41 +76,41 @@ function App() {
                     localStorage.setItem("perfil_biblioteca", usuario.permissao);
                     setPerfilUsuario(usuario.permissao);
 
-                    carregarLivros();
-                    carregarAutores();
+                    carregarDadosIniciais();
                 } catch (error) { console.error(error); }
             }
         };
         enviarTokenParaApi();
     }, [inProgress, accounts]);
 
-    // Recupera sessão se der F5 (funciona para Microsoft e para Login Comum)
+    // Recupera sessão ao dar F5
     useEffect(() => {
         const tokenSalvo = localStorage.getItem("token_biblioteca");
         const perfilSalvo = localStorage.getItem("perfil_biblioteca");
         if (tokenSalvo && perfilSalvo) {
             setPerfilUsuario(perfilSalvo);
-            carregarLivros();
-            carregarAutores();
+            carregarDadosIniciais();
         }
     }, [accounts]);
 
-    // Captura o nome correto para exibir no Header (Microsoft ou Form comum)
-    const obterNomeUsuario = () => {
-        if (accounts.length > 0) return accounts[0].name;
-        return localStorage.getItem("nome_usuario_comum") || "Usuário";
+    const carregarDadosIniciais = () => {
+        carregarLivros(apenasDisponiveis, autorSelecionado);
+        carregarAutores();
+        carregarMeusEmprestimos(); // 🟢 Carrega os empréstimos do usuário logado
     };
 
-    // Métodos de integração com a API (.NET)
-    const carregarLivros = async (filtrarDisponivel = apenasDisponiveis, idAutor = autorSelecionado) => {
+    // INTEGRATION: OBTER LIVROS
+    const carregarLivros = async (filtrarDisponivel, idAutor) => {
         setCarregando(true);
         try {
             const tokenSistema = localStorage.getItem("token_biblioteca");
+            const headers = { 'Authorization': `Bearer ${tokenSistema}` };
             let url = `${API_URL}/livro`;
+
             if (idAutor) url = `${API_URL}/livro/${idAutor}/livros`;
             else if (filtrarDisponivel) url = `${API_URL}/livro/disponiveis?disponivel=true`;
 
-            const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${tokenSistema}` } });
+            const response = await axios.get(url, { headers });
             setLivros(response.data);
         } catch (e) { console.error(e); } finally { setCarregando(false); }
     };
@@ -133,15 +122,85 @@ function App() {
         } catch (e) { console.error(e); }
     };
 
+    // 🟢 NOVO ENDPOINT: COLETAR EMPRÉSTIMOS DO USUÁRIO LOGADO
+    const carregarMeusEmprestimos = async () => {
+        try {
+            const tokenSistema = localStorage.getItem("token_biblioteca");
+            // Bate no endpoint protegido que lê o token e traz os dados do MySQL
+            const response = await axios.get(`${API_URL}/Emprestimo/meus-emprestimos`, {
+                headers: { 'Authorization': `Bearer ${tokenSistema}` }
+            });
+            setEmprestimos(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar empréstimos:", error);
+        }
+    };
+
+    // FILTROS
+    const handleCheckboxChange = (e) => {
+        const valor = e.target.checked;
+        setApenasDisponiveis(valor); setAutorSelecionado('');
+        carregarLivros(valor, '');
+    };
+
+    const handleAutorChange = (e) => {
+        const id = e.target.value;
+        setAutorSelecionado(id); setApenasDisponiveis(false);
+        carregarLivros(false, id);
+    };
+
+    const handleLimparFiltros = () => {
+        setApenasDisponiveis(false); setAutorSelecionado(''); setBusca('');
+        carregarLivros(false, '');
+    };
+
+    // REQUISIÇÃO: SOLICITAR EMPRÉSTIMO
+    const handleSolicitarEmprestimo = async (livroId, livroNome) => {
+        if (!window.confirm(`Deseja solicitar o empréstimo de "${livroNome}"?`)) return;
+        try {
+            const tokenSistema = localStorage.getItem("token_biblioteca");
+            const payloadEmprestimo = { libroId: livroId, dataEmprestimo: new Date().toISOString() };
+
+            await axios.post(`${API_URL}/Emprestimo`, payloadEmprestimo, {
+                headers: { 'Authorization': `Bearer ${tokenSistema}` }
+            });
+
+            alert("Empréstimo registrado com sucesso!");
+            carregarDadosIniciais(); // Recarrega os livros e a nova lista de empréstimos
+        } catch (error) {
+            alert(error.response?.data?.mensagem || "Falha ao processar empréstimo.");
+        }
+    };
+
+    // 🟢 REQUISIÇÃO: DEVOLVER LIVRO
+    const handleDevolverLivro = async (emprestimoId) => {
+        if (!window.confirm("Confirmar a devolução deste livro à biblioteca da TI?")) return;
+        try {
+            const tokenSistema = localStorage.getItem("token_biblioteca");
+
+            // Bate no endpoint de devolução passando o ID do registro de empréstimo
+            await axios.post(`${API_URL}/Emprestimo/devolver/${emprestimoId}`, {}, {
+                headers: { 'Authorization': `Bearer ${tokenSistema}` }
+            });
+
+            alert("Livro devolvido com sucesso! Obrigado.");
+            carregarDadosIniciais(); // Atualiza o estoque e os status na tela
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao processar devolução na API.");
+        }
+    };
+
+    // ACTIONS ADMIN
     const handleCadastrarLivro = async (e) => {
         e.preventDefault();
         try {
             const tokenSistema = localStorage.getItem("token_biblioteca");
             await axios.post(`${API_URL}/livro`, novoLivro, { headers: { 'Authorization': `Bearer ${tokenSistema}` } });
-            alert("Livro cadastrado!");
-            setNovoLivro({ nome: '', genero: '', autorId: '', disponivel: "true"});
-            carregarLivros();
-        } catch (e) { alert("Erro ao cadastrar." + e.Message); }
+            alert("Livro adicionado!");
+            setNovoLivro({ nome: '', autorId: '', disponivel: true, genero: '' });
+            carregarLivros(apenasDisponiveis, autorSelecionado);
+        } catch (e) { alert("Erro ao cadastrar."); }
     };
 
     const handleDeletarLivro = async (id, nome) => {
@@ -149,30 +208,19 @@ function App() {
         try {
             const tokenSistema = localStorage.getItem("token_biblioteca");
             await axios.delete(`${API_URL}/livro/${id}`, { headers: { 'Authorization': `Bearer ${tokenSistema}` } });
-            carregarLivros();
+            carregarLivros(apenasDisponiveis, autorSelecionado);
         } catch (e) { alert("Erro ao deletar."); }
     };
 
-    const handleSolicitarEmprestimo = async (livroId) => {
-        if (!window.confirm(`Solicitar empréstimo?`)) return;
-        try {
-            const tokenSistema = localStorage.getItem("token_biblioteca");
-            const payloadEmprestimo = {
-                livroId: livroId,
-                dataEmprestimo: new Date().toISOString(),
-                usuarioId: "00000000-0000-0000-0000-000000000000"
-            };
-            await axios.post(`${API_URL}/Emprestimo`, payloadEmprestimo, { headers: { 'Authorization': `Bearer ${tokenSistema}` } });
-            alert("Solicitado!");
-            carregarLivros();
-        } catch (e) { alert("Erro ao solicitar."); }
+    const obterNomeUsuario = () => {
+        if (accounts.length > 0) return accounts[0].name;
+        return localStorage.getItem("nome_usuario_comum") || "Usuário";
     };
 
     const livrosFiltrados = livros.filter(l =>
         l && l.nome && typeof l.nome === 'string' ? l.nome.toLowerCase().includes(busca.toLowerCase()) : false
     );
 
-    // Validação manual para esconder o painel caso o login tradicional tenha sido feito por um Leitor
     const estaAutenticado = accounts.length > 0 || localStorage.getItem("token_biblioteca") !== null;
 
     return (
@@ -180,178 +228,164 @@ function App() {
 
             {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '15px 30px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                <h2 style={{ margin: 0, color: '#0078d4' }}>📚 Bibliotec | Corporativo</h2>
+                <h2 style={{ margin: 0, color: '#0078d4' }}>📚 Bibliotec Fiotec</h2>
                 {estaAutenticado && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <span>Olá, <strong>{obterNomeUsuario()}</strong> ({perfilUsuario})</span>
-                        <button onClick={() => { instance.logoutRedirect(); localStorage.clear(); window.location.reload(); }} style={{ padding: '6px 12px', backgroundColor: '#a80000', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Sair</button>
+                        <span>Olá, <strong>{obterNomeUsuario()}</strong> (<small>{perfilUsuario}</small>)</span>
+                        <button onClick={() => { instance.logoutRedirect(); localStorage.clear(); window.location.reload(); }} style={{ padding: '6px 12px', backgroundColor: '#a80000', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
                     </div>
                 )}
             </div>
 
-            {/* 🔒 TELA DESLOGADO: FORMULÁRIO TRADICIONAL + ENTRAR COM MICROSOFT */}
+            {/* 🔒 DESLOGADO */}
             {!estaAutenticado && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'stretch', gap: '40px', marginTop: '60px', maxWidth: '900px', margin: '60px auto 0 auto' }}>
-
-                    {/* LADO ESQUERDO: Formulário Normal */}
-                    <div style={{ flex: 1, backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ flex: 1, backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <h3 style={{ marginTop: 0, color: '#323130', marginBottom: '20px' }}>Acesso Local</h3>
-
                         <form onSubmit={handleLoginTradicional} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#494541' }}>E-mail</label>
-                                <input
-                                    type="email"
-                                    value={emailForm}
-                                    onChange={(e) => setEmailForm(e.target.value)}
-                                    placeholder="usuario@email.com"
-                                    style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '5px', color: '#494541' }}>Senha</label>
-                                <input
-                                    type="password"
-                                    value={senhaForm}
-                                    onChange={(e) => setSenhaForm(e.target.value)}
-                                    placeholder="••••••••"
-                                    style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
-                                    required
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={carregandoLoginComum}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#2b2b2b', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: carregandoLoginComum ? 'not-allowed' : 'pointer', marginTop: '10px' }}
-                            >
-                                {carregandoLoginComum ? "⏳ Verificando..." : "Entrar no Sistema"}
-                            </button>
+                            <input type="email" value={emailForm} onChange={(e) => setEmailForm(e.target.value)} placeholder="usuario@fiotec.com" style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }} required />
+                            <input type="password" value={senhaForm} onChange={(e) => setSenhaForm(e.target.value)} placeholder="••••••••" style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }} required />
+                            <button type="submit" disabled={carregandoLoginComum} style={{ width: '100%', padding: '12px', backgroundColor: '#2b2b2b', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Entrar</button>
                         </form>
                     </div>
-
-                    {/* DIVISOR VISUAL */}
-                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                        <div style={{ width: '1px', backgroundColor: '#ced4da', flex: 1 }}></div>
-                        <span style={{ padding: '10px 0', color: '#605e5c', fontSize: '13px', fontWeight: 'bold' }}>OU</span>
-                        <div style={{ width: '1px', backgroundColor: '#ced4da', flex: 1 }}></div>
-                    </div>
-
-                    {/* LADO DIREITO: SSO Microsoft */}
-                    <div style={{ flex: 1, backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}><span style={{ color: '#605e5c', fontSize: '13px', fontWeight: 'bold' }}>OU</span></div>
+                    <div style={{ flex: 1, backgroundColor: '#fff', padding: '30px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                         <h3 style={{ marginTop: 0, color: '#323130' }}>Acesso Corporativo</h3>
-                        <p style={{ color: '#605e5c', fontSize: '14px', marginBottom: '25px' }}>Se você faz parte do time da Fiotec, utilize o botão abaixo para logar direto com sua conta Office 365.</p>
-
-                        <button
-                            onClick={handleLoginMicrosoft}
-                            style={{ padding: '12px 24px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background-color 0.2s' }}
-                        >
-                            🔷 Entrar com a Microsoft
-                        </button>
+                        <button onClick={handleLoginMicrosoft} style={{ padding: '12px 24px', backgroundColor: '#0078d4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}>🔷 Conectar via Microsoft</button>
                     </div>
-
                 </div>
             )}
 
-            {/* 🔓 TELA LOGADO: PAINEL DE ABAS (CATÁLOGO / ADMIN) */}
+            {/* 🔓 LOGADO */}
             {estaAutenticado && (
                 <div style={{ marginTop: '30px' }}>
 
-                    {perfilUsuario === 'Admin' && (
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                            <button onClick={() => setAbaAtiva('catalogo')} style={{ padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backgroundColor: abaAtiva === 'catalogo' ? '#0078d4' : '#e1dfdd', color: abaAtiva === 'catalogo' ? 'white' : 'black' }}>
-                                📖 Catálogo Geral
-                            </button>
-                            <button onClick={() => setAbaAtiva('admin')} style={{ padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backgroundColor: abaAtiva === 'admin' ? '#107c41' : '#e1dfdd', color: abaAtiva === 'admin' ? 'white' : 'black' }}>
-                                ⚙️ Painel de Administração
-                            </button>
-                        </div>
-                    )}
+                    {/* MENU DE NAVEGAÇÃO POR ABAS (Aparece para todos, mas Admin ganha a aba extra) */}
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #e1dfdd', paddingBottom: '10px' }}>
+                        <button onClick={() => setAbaAtiva('catalogo')} style={{ padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backgroundColor: abaAtiva === 'catalogo' ? '#0078d4' : 'transparent', color: abaAtiva === 'catalogo' ? 'white' : 'black' }}>
+                            📖 Ver Acervo
+                        </button>
 
-                    {/* ABA: CATÁLOGO */}
+                        <button onClick={() => setAbaAtiva('meus-emprestimos')} style={{ padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backgroundColor: abaAtiva === 'meus-emprestimos' ? '#0078d4' : 'transparent', color: abaAtiva === 'meus-emprestimos' ? 'white' : 'black' }}>
+                            🕒 Meus Empréstimos ({emprestimos.length})
+                        </button>
+
+                        {perfilUsuario === 'Admin' && (
+                            <button onClick={() => setAbaAtiva('admin')} style={{ padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', backgroundColor: abaAtiva === 'admin' ? '#107c41' : 'transparent', color: abaAtiva === 'admin' ? 'white' : 'black', marginLeft: 'auto' }}>
+                                ⚙️ Painel do Admin
+                            </button>
+                        )}
+                    </div>
+
+                    {/* ---------------- ABA 1: CATÁLOGO GERAL ---------------- */}
                     {abaAtiva === 'catalogo' && (
                         <div>
-                            <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-                                <input type="text" placeholder="🔍 Buscar por nome..." value={busca} onChange={(e) => setBusca(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ced4da' }} />
+                            <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input type="text" placeholder="Pesquisar por palavra-chave..." value={busca} onChange={(e) => setBusca(e.target.value)} style={{ flex: 2, padding: '8px 12px', borderRadius: '4px', border: '1px solid #ced4da' }} />
+                                    <select value={autorSelecionado} onChange={handleAutorChange} style={{ flex: 1, padding: '8px 12px', borderRadius: '4px', border: '1px solid #ced4da' }}>
+                                        <option value="">Filtrar por Autor...</option>
+                                        {autores.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                                    </select>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}>
+                                        <input type="checkbox" checked={apenasDisponiveis} onChange={handleCheckboxChange} /> Apenas Disponíveis
+                                    </label>
+                                    <button onClick={handleLimparFiltros} style={{ padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Limpar</button>
+                                </div>
                             </div>
 
-                            <h3>📖 Acervo da Biblioteca</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                                {livrosFiltrados.map((livro) => (
-                                    <div key={livro.id} style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                        <div>
-                                            <h4 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>{livro.nome}</h4>
-                                            <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#605e5c' }}>Autor: {livro.autorNome || livro.autor?.nome || 'Desconhecido'}</p>
+                            <h3>📖 Livros Cadastrados</h3>
+                            {carregando ? <p>⏳ Consultando base...</p> : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                                    {livrosFiltrados.map((livro) => (
+                                        <div key={livro.id} style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                            <div>
+                                                <h4 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>{livro.nome}</h4>
+                                                <p style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#605e5c' }}>Autor: {livro.autorNome || livro.autor?.nome || 'Desconhecido'}</p>
+                                                <p style={{ margin: '0 0 15px 0', fontSize: '13px', color: '#a19f9d' }}>Gênero: {livro.genero || 'Geral'}</p>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3f2f1', paddingTop: '15px' }}>
+                                                <span style={{ fontSize: '13px', color: livro.disponivel ? '#107c41' : '#a80000', fontWeight: 'bold' }}>{livro.disponivel ? '🟢 Disponível' : '🔴 Emprestado'}</span>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <button onClick={() => handleSolicitarEmprestimo(livro.id, livro.nome)} disabled={!livro.disponivel} style={{ padding: '8px 14px', backgroundColor: livro.disponivel ? '#0078d4' : '#ced4da', color: 'white', border: 'none', borderRadius: '4px', cursor: livro.disponivel ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}>Solicitar</button>
+                                                    {perfilUsuario === 'Admin' && <button onClick={() => handleDeletarLivro(livro.id, livro.nome)} style={{ backgroundColor: 'transparent', border: 'none', color: '#a80000', cursor: 'pointer' }}>🗑️</button>}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <button onClick={() => handleSolicitarEmprestimo(livro.id, livro.nome)} disabled={livro.quantidade <= 0} style={{ padding: '8px 14px', backgroundColor: livro.quantidade > 0 ? '#0078d4' : '#ced4da', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Solicitar</button>
-                                            {perfilUsuario === 'Admin' && (
-                                                <button onClick={() => handleDeletarLivro(livro.id, livro.nome)} style={{ backgroundColor: 'transparent', border: 'none', color: '#a80000', cursor: 'pointer' }}>🗑️</button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* ABA: PAINEL ADMIN */}
+                    {/* ---------------- 🟢 ABA 2: HISTÓRICO DE EMPRÉSTIMOS DO USUÁRIO ---------------- */}
+                    {abaAtiva === 'meus-emprestimos' && (
+                        <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h3 style={{ marginTop: 0, color: '#0078d4' }}>🕒 Meus Livros Solicitados</h3>
+                            <p style={{ color: '#605e5c', fontSize: '14px' }}>Aqui você acompanha os livros que estão em sua posse e pode realizar a devolução.</p>
+
+                            {emprestimos.length === 0 ? (
+                                <p style={{ marginTop: '20px', color: '#a19f9d', fontStyle: 'italic' }}>Você não possui nenhum empréstimo ativo no momento.</p>
+                            ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f3f2f1', textAlign: 'left' }}>
+                                            <th style={{ padding: '12px' }}>Livro</th>
+                                            <th style={{ padding: '12px' }}>Data de Solicitação</th>
+                                            <th style={{ padding: '12px' }}>Status</th>
+                                            <th style={{ padding: '12px', textAlign: 'right' }}>Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {emprestimos.map((emp) => (
+                                            <tr key={emp.id} style={{ borderBottom: '1px solid #f3f2f1' }}>
+                                                <td style={{ padding: '12px', fontWeight: 'bold' }}>{emp.livroNome || emp.livro?.nome || "Livro Solicitado"}</td>
+                                                <td style={{ padding: '12px' }}>{new Date(emp.dataEmprestimo).toLocaleDateString('pt-BR')}</td>
+                                                <td style={{ padding: '12px' }}>
+                                                    <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', backgroundColor: emp.status === 'Devolvido' ? '#dff6dd' : '#fff4ce', color: emp.status === 'Devolvido' ? '#107c41' : '#795600' }}>
+                                                        {emp.status || 'Ativo'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    {emp.status !== 'Devolvido' && (
+                                                        <button
+                                                            onClick={() => handleDevolverLivro(emp.id)}
+                                                            style={{ padding: '6px 12px', backgroundColor: '#107c41', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+                                                        >
+                                                            ↩️ Devolver Livro
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ---------------- ABA 3: PAINEL ADMIN ---------------- */}
                     {abaAtiva === 'admin' && perfilUsuario === 'Admin' && (
                         <div>
-                            {/* Cadastro de Livro */}
-                            <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
-                                <h3 style={{ marginTop: 0, color: '#107c41' }}>➕ Adicionar Novo Livro</h3>
+                            <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                <h3 style={{ marginTop: 0, color: '#107c41' }}>➕ Adicionar Novo Livro ao Acervo</h3>
                                 <form onSubmit={handleCadastrarLivro} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-
-                                    {/* Input: Nome */}
                                     <div style={{ flex: 2, minWidth: '200px' }}>
                                         <label style={{ display: 'block', fontSize: '13px', marginBottom: '5px' }}>Nome do Livro</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ex: C# Advanced"
-                                            value={novoLivro.nome}
-                                            onChange={(e) => setNovoLivro({ ...novoLivro, nome: e.target.value })}
-                                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
-                                            required
-                                        />
+                                        <input type="text" value={novoLivro.nome} onChange={(e) => setNovoLivro({ ...novoLivro, nome: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }} required />
                                     </div>
-
-                                    {/* Select: Autor */}
                                     <div style={{ flex: 1, minWidth: '150px' }}>
                                         <label style={{ display: 'block', fontSize: '13px', marginBottom: '5px' }}>Autor</label>
-                                        <select
-                                            value={novoLivro.autorId}
-                                            onChange={(e) => setNovoLivro({ ...novoLivro, autorId: e.target.value })}
-                                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
-                                            required
-                                        >
+                                        <select value={novoLivro.autorId} onChange={(e) => setNovoLivro({ ...novoLivro, autorId: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }} required>
                                             <option value="">Selecione...</option>
                                             {autores.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
                                         </select>
                                     </div>
-
-                                    {/* Input: Gênero (Substituiu a Categoria) */}
                                     <div style={{ flex: 1, minWidth: '150px' }}>
                                         <label style={{ display: 'block', fontSize: '13px', marginBottom: '5px' }}>Gênero</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ex: Tecnologia"
-                                            value={novoLivro.genero}
-                                            onChange={(e) => setNovoLivro({ ...novoLivro, genero: e.target.value })}
-                                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }}
-                                            required
-                                        />
+                                        <input type="text" value={novoLivro.genero} onChange={(e) => setNovoLivro({ ...novoLivro, genero: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ced4da', boxSizing: 'border-box' }} required />
                                     </div>
-
-                                    {/* Botão Salvar */}
-                                    <button
-                                        type="submit"
-                                        style={{ padding: '9px 20px', backgroundColor: '#107c41', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', height: '36px' }}
-                                    >
-                                        Salvar no Banco
-                                    </button>
+                                    <button type="submit" style={{ padding: '9px 20px', backgroundColor: '#107c41', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', height: '36px' }}>Salvar no Banco</button>
                                 </form>
                             </div>
                         </div>
@@ -359,7 +393,6 @@ function App() {
 
                 </div>
             )}
-
         </div>
     );
 }

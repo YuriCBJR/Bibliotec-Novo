@@ -68,10 +68,10 @@ public class EmprestimoController : Controller
                 return NotFound(new { mensagem = "O livro solicitado não existe." });
             }
 
-            // Se o seu sistema controla por quantidade ou pelo booleano "Disponivel"
+            // Validação baseada no booleano de disponibilidade do seu banco
             if (!livroDb.Disponivel)
             {
-                return BadRequest(new { mensagem = "Este livro já está Emprestado no momento." });
+                return BadRequest(new { message = "Este livro já está emprestado no momento." });
             }
 
             // 4. Cria o objeto do Empréstimo cruzando as chaves (UsuarioId + LivroId)
@@ -79,17 +79,19 @@ public class EmprestimoController : Controller
             {
                 Id = Guid.NewGuid(),
                 LivroId = dto.LivroId,
-                UsuarioId = usuarioDb.Id, // 👈 Injeta o ID real do banco, ignorando o lixo enviado pelo front
-
+                UsuarioId = usuarioDb.Id // Injeta o ID real pescado do Token
             };
 
+            // 5. Atualiza o status do livro para indisponível
             livroDb.Disponivel = false;
-            // 6. Salva tudo na mesma transação
+
+            // 6. Salva tudo na mesma transação no MySQL
             _context.Emprestimo.Add(novoEmprestimo);
             _context.Livros.Update(livroDb);
             await _context.SaveChangesAsync();
 
-            return Ok(new { mensagem = "Empréstimo registrado com sucesso! Retire o livro na TI." });
+            // 🟢 Correção de sintaxe aplicada aqui:
+            return Ok(new { mensagem = "Empréstimo registrado com sucesso!" });
         }
         catch (Exception ex)
         {
