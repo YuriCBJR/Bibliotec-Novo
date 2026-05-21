@@ -2,6 +2,7 @@
 using Bibliotec.Data;
 using Bibliotec.DTOs;
 using Bibliotec.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,7 @@ public class AutorController : Controller
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAutor()
     {
         try
@@ -35,6 +37,7 @@ public class AutorController : Controller
         }
     }
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> PostAutor([FromBody] CreateAutorDto autorDto)
     {
         try
@@ -61,6 +64,7 @@ public class AutorController : Controller
         }
     }
     [HttpGet("{autorId}/livros")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetLivrosAutor(Guid autorId)
     {
         try

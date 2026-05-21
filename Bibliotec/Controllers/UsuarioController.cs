@@ -11,7 +11,7 @@ namespace Bibliotec.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    
+    [Authorize]
     public class UsuarioController : Controller
     {
         private readonly BibliotecContext _context;
@@ -25,6 +25,7 @@ namespace Bibliotec.Controllers
             _tokenService = tokenService;
         }
         [HttpGet]
+        [Authorize(Roles = "Admin, Colaborador")]
         public async Task<IActionResult> GetUsuario()
         {
             try
@@ -39,19 +40,28 @@ namespace Bibliotec.Controllers
             }
         }
         [HttpPost]
-        [Authorize(Roles= "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PostUsuario([FromBody] CreateUsuarioDto usuarioDto)
         {
             try
             {
+                var usuarioExiste = await _context.Usuarios.AnyAsync(u => u.Email == usuarioDto.Email);
+                if (usuarioExiste) return BadRequest(new { erro = "Este e-mail já está cadastrado no sistema." });
+
+                // 2. Faz o mapeamento padrão do AutoMapper
                 var usuario = _mapper.Map<Usuario>(usuarioDto);
+
+                // 3. 🛡️ SEGURANÇA: Criptografa a senha antes de mandar para o MySQL
+                usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDto.Password);
+                usuario.Id = Guid.NewGuid();
+
                 _context.Usuarios.Add(usuario);
                 await _context.SaveChangesAsync();
-                return Ok();
+
+                return Ok(new { mensagem = $"Usuário {usuario.Nome} cadastrado com sucesso pelo Administrador!" });
             }
             catch (Exception ex)
             {
-
                 return BadRequest(new { erro = ex.Message, detalhe = ex.InnerException?.Message });
             }
         }

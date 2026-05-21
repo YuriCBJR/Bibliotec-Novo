@@ -10,6 +10,6 @@ public class LivroProfile : Profile
     {
         // 1. Mapeamento Simples: DTO -> Model (Para Criação)
         CreateMap<CreateLivroDto, Livro>();
-        CreateMap<Livro, ReadLivroDto>().ForMember(dest => dest.Autor, opt => opt.MapFrom(src => src.Autor.Nome));
+        CreateMap<Livro, ReadLivroDto>().ForMember(dest => dest.AutorNome, opt => opt.MapFrom(src => src.Autor.Nome));
     }
 }

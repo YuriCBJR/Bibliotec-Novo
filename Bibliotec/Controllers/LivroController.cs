@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Bibliotec.Data;
 using Bibliotec.DTOs;
 using Bibliotec.Models;
@@ -38,8 +38,8 @@ public class LivroController : Controller
         }
     }
 
+    [HttpPost]
     [Authorize(Roles = "Admin")]
-    [HttpPost("/api/adicionarLivro")]
     public async Task<IActionResult> AdicionarLivro([FromBody] CreateLivroDto livroDto)
     {
         try
@@ -60,6 +60,7 @@ public class LivroController : Controller
     }
 
     [HttpGet("pesquisa")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetLivroPesquisa([FromQuery] string valor)
     {
         try
@@ -67,7 +68,8 @@ public class LivroController : Controller
             var query = _context.Livros.Include(o => o.Autor)
                         .Where(o => o.Nome.Contains(valor) || o.Autor.Nome.Contains(valor));
             var lista = await query.ToListAsync();
-            return Ok("Alterações feitas!");
+            var livrosDto = _mapper.Map<List<ReadLivroDto>>(lista);
+            return Ok(livrosDto);
         }
         catch (Exception ex)
         {
@@ -77,11 +79,20 @@ public class LivroController : Controller
     
     [HttpGet("disponiveis")]
     [AllowAnonymous]
-    public IActionResult GetLivroDisponivel([FromQuery] bool disponivel = true)
+    public async Task<IActionResult> GetLivroDisponivel([FromQuery] bool disponivel = true)
     {
-        var livro = _context.Livros.Where(l => l.Disponivel == disponivel);
-        return Ok(livro);
-
+        try
+        {
+            var livros = await _context.Livros.Include(l => l.Autor)
+                                              .Where(l => l.Disponivel == disponivel)
+                                              .ToListAsync();
+            var livrosDto = _mapper.Map<List<ReadLivroDto>>(livros);
+            return Ok(livrosDto);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [Authorize(Roles = "Admin")]

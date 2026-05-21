@@ -8,5 +8,5 @@ public class ReadLivroDto
     public string Nome { get; set; }
     public string Genero { get; set; } 
     public bool Disponivel { get; set; }
-    public string Autor { get; set; }
+    public string AutorNome { get; set; }
 }
