@@ -5,19 +5,17 @@ import { PublicClientApplication } from '@azure/msal-browser'
 import { MsalProvider } from '@azure/msal-react'
 import { msalConfig } from './authConfig'
 
-// 1. Cria a instância normal
+
 const msalInstance = new PublicClientApplication(msalConfig);
 
-// 2. Cria uma função assíncrona para inicializar a Azure ANTES de renderizar a tela
 async function iniciarApp() {
     try {
-        // 🛡️ A LINHA QUE FALTAVA: Inicializa os componentes internos da Microsoft
+        // Inicializa os componentes internos da Microsoft
         await msalInstance.initialize();
 
-        // Trata qualquer retorno de redirecionamento pendente
         await msalInstance.handleRedirectPromise();
 
-        // 3. Só renderiza o React depois que a Azure deu o "OK, estou pronta!"
+        // Só renderiza o React depois que a Azure deu ok
         ReactDOM.createRoot(document.getElementById('root')).render(
             <MsalProvider instance={msalInstance}>
                 <App />
@@ -28,5 +26,4 @@ async function iniciarApp() {
     }
 }
 
-// Dispara a inicialização
 iniciarApp();
