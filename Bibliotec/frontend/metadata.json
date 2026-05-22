@@ -1,0 +1,6 @@
+{
+  "name": "Bibliotec Fiotec",
+  "description": "Sistema moderno e responsivo de gestão de biblioteca para consulta de acervo, empréstimos e devoluções.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
