@@ -9,13 +9,6 @@ using System.Security.Claims;
 
 namespace Bibliotec.Controllers;
 
-public class EmprestimoRequest
-{
-    public Guid LivroId { get; set; }
-    public DateTime DataEmprestimo {  get; set; }
-    public Guid UsuarioId { get; set; }
-}
-
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -41,56 +34,75 @@ public class EmprestimoController : Controller
         return Ok(emprestimosDto);
     }
 
+    // Carrega os empréstimos do usuário logado baseado no Token JWT
+    [HttpGet("meus-emprestimos")]
+    public async Task<IActionResult> GetMeusEmprestimos()
+    {
+        try
+        {
+            var usuarioEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            if (string.IsNullOrEmpty(usuarioEmail)) return Unauthorized();
+
+            var usuarioDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == usuarioEmail);
+            if (usuarioDb == null) return NotFound("Usuário não encontrado.");
+
+            var emprestimos = await _context.Emprestimo
+                .Include(e => e.Livro)
+                .Where(e => e.UsuarioId == usuarioDb.Id)
+                .ToListAsync();
+
+            var emprestimosDto = _mapper.Map<List<ReadEmprestimoDto>>(emprestimos);
+            return Ok(emprestimosDto);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     [HttpPost]
-    [Authorize] // 🔒 Bloqueia para usuários não logados (Leitor ou Admin)
     public async Task<IActionResult> PostEmprestimo([FromBody] CreateEmprestimoDto dto)
     {
         try
         {
-            // 1. 🛡️ SEGURANÇA: Captura o Email do usuário logado direto do Token JWT
             var usuarioEmail = User.FindFirst(ClaimTypes.Email)?.Value;
             if (string.IsNullOrEmpty(usuarioEmail))
             {
                 return Unauthorized(new { mensagem = "Usuário não identificado no token." });
             }
 
-            // 2. Busca o usuário real no MySQL para pegar o ID correto dele
             var usuarioDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == usuarioEmail);
             if (usuarioDb == null)
             {
                 return NotFound(new { mensagem = "Usuário não encontrado no banco de dados." });
             }
 
-            // 3. Valida se o livro realmente existe e se está disponível
             var livroDb = await _context.Livros.FirstOrDefaultAsync(l => l.Id == dto.LivroId);
             if (livroDb == null)
             {
-                return NotFound(new { mensagem = "O livro solicitado não existe." });
+                return NotFound(new { margin = "O livro solicitado não existe." });
             }
 
-            // Validação baseada no booleano de disponibilidade do seu banco
             if (!livroDb.Disponivel)
             {
                 return BadRequest(new { message = "Este livro já está emprestado no momento." });
             }
 
-            // 4. Cria o objeto do Empréstimo cruzando as chaves (UsuarioId + LivroId)
             var novoEmprestimo = new Emprestimo
             {
                 Id = Guid.NewGuid(),
                 LivroId = dto.LivroId,
-                UsuarioId = usuarioDb.Id // Injeta o ID real pescado do Token
+                UsuarioId = usuarioDb.Id,
+                DataEmprestimo = dto.DataEmprestimo != default ? dto.DataEmprestimo : DateTime.UtcNow,
+                Ativo = true
             };
 
-            // 5. Atualiza o status do livro para indisponível
             livroDb.Disponivel = false;
 
-            // 6. Salva tudo na mesma transação no MySQL
             _context.Emprestimo.Add(novoEmprestimo);
             _context.Livros.Update(livroDb);
             await _context.SaveChangesAsync();
 
-            // 🟢 Correção de sintaxe aplicada aqui:
             return Ok(new { mensagem = "Empréstimo registrado com sucesso!" });
         }
         catch (Exception ex)
@@ -99,7 +111,6 @@ public class EmprestimoController : Controller
         }
     }
 
-    [Authorize(Roles = "Colaborador,Admin")]
     [HttpPost("{id}/devolver")]
     public async Task<IActionResult> DevolverLivro([FromRoute] Guid id)
     {
@@ -133,16 +144,14 @@ public class EmprestimoController : Controller
             return BadRequest(new { erro = ex.Message });
         }
     }
-    [Authorize(Roles = "Admin")]
 
-    [HttpGet("usuario/")]
+    [HttpGet("usuario")]
     public async Task<IActionResult> EmprestimosUsuario([FromQuery] Guid usuarioId)
     {
         try
         {
-            // Validação de Segurança
-            var loggedInUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            var loggedInUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            var loggedInUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var loggedInUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
             if (loggedInUserId != usuarioId.ToString() && loggedInUserRole != "Admin" && loggedInUserRole != "Colaborador")
             {
@@ -150,25 +159,20 @@ public class EmprestimoController : Controller
             }
 
             var usuarioExiste = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
-            if (usuarioExiste == null)
-            {
-                return NotFound("Usuário não encontrado");
-            }
+            if (usuarioExiste == null) return NotFound("Usuário não encontrado");
+
             var listaEmprestimo = await _context.Emprestimo
                 .Include(e => e.Livro)
                 .Include(e => e.Usuario)
                 .Where(e => e.UsuarioId == usuarioId)
                 .ToListAsync();
-            
+
             var listaEmprestimoDto = _mapper.Map<List<ReadEmprestimoDto>>(listaEmprestimo);
             return Ok(listaEmprestimoDto);
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             return BadRequest(ex.Message);
         }
     }
 }
-   
-    
-

@@ -9,7 +9,6 @@ public class EmprestimoProfile : Profile
 {
     public EmprestimoProfile()
     {
-        CreateMap<EmprestimoRequest, Emprestimo>();
         CreateMap<Emprestimo, ReadEmprestimoDto>()
             .ForMember(dest => dest.TituloLivro, opt => opt.MapFrom(src => src.Livro != null ? src.Livro.Nome : string.Empty))
             .ForMember(dest => dest.LivroId, opt => opt.MapFrom(src => src.LivroId))

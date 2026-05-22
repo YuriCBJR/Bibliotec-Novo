@@ -3,7 +3,6 @@ using Bibliotec.Data;
 using Bibliotec.DTOs;
 using Bibliotec.Models;
 using Bibliotec.Services;
-using Bibliotec.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +35,7 @@ public class AutenticacaoController : ControllerBase
     {
         try
         {
-            // 1. CAPTURA OS DADOS DA AZURE: Puxa o e-mail e o nome direto do Token da Microsoft
+            // Puxa o e-mail e o nome direto do Token da Microsoft
             var emailAzure = User.FindFirst("preferred_username")?.Value ?? User.FindFirst(ClaimTypes.Email)?.Value;
             var nomeAzure = User.FindFirst("name")?.Value;
 
@@ -64,7 +63,7 @@ public class AutenticacaoController : ControllerBase
                 await _context.SaveChangesAsync();
             }
 
-            // 4. GERA O SEU JWT LOCAL: Cria o seu próprio token contendo as SUAS Roles locais
+            //Isso aqui aparentemente gera token jwt local
             var tokenSistema = _tokenService.GerarToken(usuarioLocal);
 
             return Ok(new
@@ -107,7 +106,7 @@ public class AutenticacaoController : ControllerBase
         // Criptografa a senha antes de salvar
         string senhaCriptografada = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-        // Cria o objeto da sua Model de Usuário (Ajuste as propriedades conforme sua Model)
+        // cria objetos da model Usuario
         var novoUsuario = new Usuario
         {
             Id = Guid.NewGuid(),
@@ -133,9 +132,9 @@ public class AutenticacaoController : ControllerBase
             {
                 new Claim(ClaimTypes.Name, usuario.Nome),
                 new Claim(ClaimTypes.Email, usuario.Email),
-                new Claim(ClaimTypes.Role, usuario.Permissao) // Injeta a role (Admin/Leitor) no token!
+                new Claim(ClaimTypes.Role, usuario.Permissao)
             }),
-            Expires = DateTime.UtcNow.AddHours(3), // Expira em 3 horas
+            Expires = DateTime.UtcNow.AddHours(3), // Expira em 3 horas (Acho que pode ser menos)
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(chave), SecurityAlgorithms.HmacSha256Signature)
         };
 

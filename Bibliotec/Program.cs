@@ -61,11 +61,11 @@ builder.Services.AddAuthentication(
 
 builder.Services.Configure<JwtBearerOptions>("AzureAdScheme", options =>
 {
-    // Força a API a aceitar o token mesmo se houver divergência de URLs locais/computador
+    
     options.TokenValidationParameters.ValidateAudience = false;
     options.TokenValidationParameters.ValidateIssuer = false;
 
-    // Isso ajuda a debugar: se der erro, o .NET te diz o motivo real no console do VS
+    
     options.IncludeErrorDetails = true;
 });
 
@@ -91,5 +91,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<BibliotecContext>();
+    await DbSeeder.PopularBanco(dbContext);
+}
 
 app.Run();
