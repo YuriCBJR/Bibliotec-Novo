@@ -55,7 +55,10 @@ builder.Services.AddAuthentication(
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(chave),
             ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateAudience = false,
+            // Isso permite que o claim 'Email' não seja sobrescrito pelos Defaults da Microsoft
+            NameClaimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+            RoleClaimType = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
         };
     }).AddMicrosoftIdentityWebApi(builder.Configuration, "AzureAd", "AzureAdScheme");
 

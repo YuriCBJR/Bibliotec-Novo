@@ -131,7 +131,10 @@ public class AutenticacaoController : ControllerBase
             Subject = new ClaimsIdentity(new[]
             {
                 new Claim(ClaimTypes.Name, usuario.Nome),
+                // Adicionando a Claim de identificação padrão e do Email 
                 new Claim(ClaimTypes.Email, usuario.Email),
+                new Claim(JwtRegisteredClaimNames.Email, usuario.Email),
+                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                 new Claim(ClaimTypes.Role, usuario.Permissao)
             }),
             Expires = DateTime.UtcNow.AddHours(3), // Expira em 3 horas (Acho que pode ser menos)

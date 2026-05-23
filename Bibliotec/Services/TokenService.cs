@@ -27,6 +27,7 @@ public class TokenService
                 new Claim[]
                 {
                     new Claim(ClaimTypes.Email, usuario.Email),
+                    new Claim(JwtRegisteredClaimNames.Email, usuario.Email),
                     new Claim(ClaimTypes.Role, usuario.Permissao.ToString()),
                     new Claim(ClaimTypes.Name, usuario.Nome),
                     new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),

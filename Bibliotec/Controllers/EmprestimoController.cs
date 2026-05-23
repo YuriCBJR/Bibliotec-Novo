@@ -23,13 +23,15 @@ public class EmprestimoController : Controller
         _mapper = mapper;
     }
 
+    // Bug 1 corrigido: restrito a Admin/Colaborador
     [HttpGet]
+    [Authorize(Roles = "Admin, Colaborador")]
     public async Task<IActionResult> GetEmprestimo()
     {
-        var emprestimo = await _context.Emprestimo.
-            Include(e => e.Usuario).
-            Include(e => e.Livro).
-            ToListAsync();
+        var emprestimo = await _context.Emprestimo
+            .Include(e => e.Usuario)
+            .Include(e => e.Livro)
+            .ToListAsync();
         var emprestimosDto = _mapper.Map<List<ReadEmprestimoDto>>(emprestimo);
         return Ok(emprestimosDto);
     }
@@ -65,28 +67,27 @@ public class EmprestimoController : Controller
     {
         try
         {
-            var usuarioEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            // Tenta pegar o email do ClaimTypes.Email e, como fallback, do Claim "email" nativo do JWT
+            var usuarioEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Email)?.Value;
+
             if (string.IsNullOrEmpty(usuarioEmail))
             {
-                return Unauthorized(new { mensagem = "Usuário não identificado no token." });
+                 // Verificando a coleção de claims se falhar na busca rápida (Log)
+                 var claimsInfo = string.Join(", ", User.Claims.Select(c => $"{c.Type}: {c.Value}"));
+                 return Unauthorized(new { mensagem = $"Usuário não identificado no token. Suas Claims são: {claimsInfo}" });
             }
 
             var usuarioDb = await _context.Usuarios.FirstOrDefaultAsync(u => u.Email == usuarioEmail);
             if (usuarioDb == null)
-            {
                 return NotFound(new { mensagem = "Usuário não encontrado no banco de dados." });
-            }
 
             var livroDb = await _context.Livros.FirstOrDefaultAsync(l => l.Id == dto.LivroId);
             if (livroDb == null)
-            {
-                return NotFound(new { margin = "O livro solicitado não existe." });
-            }
+                return NotFound(new { mensagem = "O livro solicitado não existe." });
 
-            if (!livroDb.Disponivel)
-            {
-                return BadRequest(new { message = "Este livro já está emprestado no momento." });
-            }
+            // Bug 4 corrigido: verifica Quantidade em vez de apenas Disponivel
+            if (livroDb.Quantidade <= 0)
+                return BadRequest(new { mensagem = "Não há exemplares disponíveis no momento." });
 
             var novoEmprestimo = new Emprestimo
             {
@@ -94,10 +95,13 @@ public class EmprestimoController : Controller
                 LivroId = dto.LivroId,
                 UsuarioId = usuarioDb.Id,
                 DataEmprestimo = dto.DataEmprestimo != default ? dto.DataEmprestimo : DateTime.UtcNow,
+                DataDevolucao = null, // Ativo, ainda sem devolução
                 Ativo = true
             };
 
-            livroDb.Disponivel = false;
+            // Bug 4 corrigido: decrementa Quantidade e recalcula Disponivel
+            livroDb.Quantidade--;
+            livroDb.Disponivel = livroDb.Quantidade > 0;
 
             _context.Emprestimo.Add(novoEmprestimo);
             _context.Livros.Update(livroDb);
@@ -121,18 +125,19 @@ public class EmprestimoController : Controller
                 .FirstOrDefaultAsync(e => e.Id == id);
 
             if (emprestimo == null)
-            {
                 return NotFound(new { mensagem = "Empréstimo não encontrado." });
-            }
 
             if (!emprestimo.Ativo)
-            {
                 return BadRequest(new { mensagem = "Este empréstimo já foi devolvido anteriormente." });
-            }
 
+            // Bug 2 corrigido: seta DataDevolucao
             emprestimo.Ativo = false;
+            emprestimo.DataDevolucao = DateTime.UtcNow;
+
             if (emprestimo.Livro != null)
             {
+                // Bug 5 corrigido: incrementa Quantidade ao devolver
+                emprestimo.Livro.Quantidade++;
                 emprestimo.Livro.Disponivel = true;
             }
 
@@ -153,10 +158,13 @@ public class EmprestimoController : Controller
             var loggedInUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var loggedInUserRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            if (loggedInUserId != usuarioId.ToString() && loggedInUserRole != "Admin" && loggedInUserRole != "Colaborador")
-            {
+            // Bug 6 corrigido: verificação segura evitando null
+            bool ehOProprioUsuario = !string.IsNullOrEmpty(loggedInUserId)
+                && loggedInUserId == usuarioId.ToString();
+            bool ehAdminOuColab = loggedInUserRole == "Admin" || loggedInUserRole == "Colaborador";
+
+            if (!ehOProprioUsuario && !ehAdminOuColab)
                 return Forbid();
-            }
 
             var usuarioExiste = await _context.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId);
             if (usuarioExiste == null) return NotFound("Usuário não encontrado");
